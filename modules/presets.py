@@ -12,7 +12,7 @@ LLAMA_MODEL = None
 LLAMA_INFERENCER = None
 
 # ChatGPT 设置
-INITIAL_SYSTEM_PROMPT = "You are a helpful assistant."
+INITIAL_SYSTEM_PROMPT = "下面是一个问题，运用医学知识来正确回答提问.\n### 问题:\n{instruction}\n\n\n### 回答：\n"
 API_HOST = "api.openai.com"
 OPENAI_API_BASE = "https://api.openai.com/v1"
 CHAT_COMPLETION_URL = "https://api.openai.com/v1/chat/completions"
@@ -39,64 +39,63 @@ TIMEOUT_STREAMING = 60  # 流式对话时的超时时间
 TIMEOUT_ALL = 200  # 非流式对话时的超时时间
 ENABLE_STREAMING_OPTION = True  # 是否启用选择选择是否实时显示回答的勾选框
 ENABLE_LLM_NAME_CHAT_OPTION = True  # 是否启用选择是否使用LLM模型的勾选框
+HIDE_MY_KEY = False  # 如果你想在UI中隐藏你的 API 密钥，将此值设置为 True
 CONCURRENT_COUNT = 100 # 允许同时使用的用户数量
 
 SIM_K = 5
 INDEX_QUERY_TEMPRATURE = 1.0
 
-CHUANHU_TITLE = i18n("川虎Chat 🚀")
+CHUANHU_TITLE = i18n("本草")
 
-CHUANHU_DESCRIPTION = i18n("由Bilibili [土川虎虎虎](https://space.bilibili.com/29125536)、[明昭MZhao](https://space.bilibili.com/24807452) 和 [Keldos](https://github.com/Keldos-Li) 开发<br />访问川虎Chat的 [GitHub项目](https://github.com/GaiZhenbiao/ChuanhuChatGPT) 下载最新版脚本")
+CHUANHU_DESCRIPTION = i18n("由哈工大SCIR-HI组开发，模型发布：[本草医学大模型](https://github.com/SCIR-HI/Med-ChatGLM)。<br/>特别鸣谢：[川虎GPT](https://github.com/GaiZhenbiao/ChuanhuChatGPT)")
 
 
 ONLINE_MODELS = [
-    "GPT3.5 Turbo",
-    "GPT3.5 Turbo Instruct",
-    "GPT3.5 Turbo 16K",
-    "GPT3.5 Turbo 0301",
-    "GPT3.5 Turbo 0613",
-    "GPT3.5 Turbo 1106",
-    "GPT4",
-    "GPT4 32K",
-    "GPT4 Turbo",
-    "GPT4 Vision",
-    "川虎助理",
-    "川虎助理 Pro",
-    "GooglePaLM",
-    "xmchat",
-    "Azure OpenAI",
-    "yuanai-1.0-base_10B",
-    "yuanai-1.0-translate",
-    "yuanai-1.0-dialog",
-    "yuanai-1.0-rhythm_poems",
-    "minimax-abab5-chat",
-    "midjourney",
-    "讯飞星火大模型V3.0",
-    "讯飞星火大模型V2.0",
-    "讯飞星火大模型V1.5",
-    "Claude",
-    "ERNIE-Bot-turbo",
-    "ERNIE-Bot",
-    "ERNIE-Bot-4",
+    # "GPT3.5 Turbo",
+    # "GPT3.5 Turbo Instruct",
+    # "GPT3.5 Turbo 16K",
+    # "GPT3.5 Turbo 0301",
+    # "GPT3.5 Turbo 0613",
+    # "GPT4",
+    # "GPT4 32K",
+    # "GPT4 Turbo",
+    # "GPT4 Vision",
+    # "川虎助理",
+    # "川虎助理 Pro",
+    # "GooglePaLM",
+    # "xmchat",
+    # "Azure OpenAI",
+    # "yuanai-1.0-base_10B",
+    # "yuanai-1.0-translate",
+    # "yuanai-1.0-dialog",
+    # "yuanai-1.0-rhythm_poems",
+    # "minimax-abab5-chat",
+    # "midjourney",
+    # "讯飞星火大模型V3.0",
+    # "讯飞星火大模型V2.0",
+    # "讯飞星火大模型V1.5",
+    # "Claude"
 ]
 
 LOCAL_MODELS = [
-    "chatglm-6b",
-    "chatglm-6b-int4",
-    "chatglm-6b-int4-ge",
-    "chatglm2-6b",
-    "chatglm2-6b-int4",
-    "chatglm3-6b",
-    "chatglm3-6b-32k",
-    "StableLM",
-    "MOSS",
-    "Llama-2-7B-Chat",
-    "Qwen 7B",
-    "Qwen 14B"
+    # "chatglm-6b",
+    # "chatglm-6b-int4",
+    # "chatglm-6b-int4-ge",
+    # "chatglm2-6b",
+    # "chatglm2-6b-int4",
+    # "StableLM",
+    # "MOSS",
+    # "Llama-2-7B-Chat",
+    # "Qwen 7B",
+    # "Qwen 14B",
+    "Huozi",
 ]
 
 # Additional metadata for online and local models
 MODEL_METADATA = {
+    "Huozi":{
+        "repo_id": "Huozi",
+    },
     "Llama-2-7B":{
         "repo_id": "TheBloke/Llama-2-7B-GGUF",
         "filelist": ["llama-2-7b.Q6_K.gguf"],
@@ -131,10 +130,6 @@ MODEL_METADATA = {
         "model_name": "gpt-3.5-turbo-0613",
         "token_limit": 4096,
     },
-    "GPT3.5 Turbo 1106": {
-    "model_name": "gpt-3.5-turbo-1106",
-    "token_limit": 16384,
-    },
     "GPT4": {
         "model_name": "gpt-4",
         "token_limit": 8192,
@@ -154,18 +149,6 @@ MODEL_METADATA = {
     "Claude": {
         "model_name": "Claude",
         "token_limit": 4096,
-    },
-    "ERNIE-Bot-turbo": {
-        "model_name": "ERNIE-Bot-turbo",
-        "token_limit": 1024,
-    },
-    "ERNIE-Bot": {
-        "model_name": "ERNIE-Bot",
-        "token_limit": 1024,
-    },
-    "ERNIE-Bot-4": {
-        "model_name": "ERNIE-Bot-4",
-        "token_limit": 1024,
     },
 }
 

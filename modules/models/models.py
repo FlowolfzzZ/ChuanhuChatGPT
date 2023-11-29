@@ -35,7 +35,24 @@ def get_model(
     model = original_model
     chatbot = gr.Chatbot.update(label=model_name)
     try:
-        if model_type == ModelType.OpenAI:
+        if model_type == ModelType.Huozi:
+            if lora_model_path == "":
+                msg = f"现在请为 {model_name} 选择LoRA模型"
+                logging.info(msg)
+                lora_selector_visibility = True
+                if os.path.isdir("lora"):
+                    lora_choices = ["No LoRA"] + get_file_names_by_pinyin("lora", filetypes=[""])
+            else:
+                logging.info(f"正在加载Huozi模型: {model_name} + {lora_model_path}")
+                from .Huozi import Huozi_Client
+                dont_change_lora_selector = True
+                if lora_model_path == "No LoRA":
+                    lora_model_path = None
+                    msg += " + No LoRA"
+                else:
+                    msg += f" + {lora_model_path}"
+                model = Huozi_Client(model_name, lora_model_path, user_name=user_name)
+        elif model_type == ModelType.OpenAI:
             logging.info(f"正在加载OpenAI模型: {model_name}")
             from .OpenAI import OpenAIClient
             access_key = os.environ.get("OPENAI_API_KEY", access_key)

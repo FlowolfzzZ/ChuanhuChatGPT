@@ -122,8 +122,6 @@ def versions_html():
         Python: <span title="{sys.version}">{python_version}</span>
          • 
         Gradio: {gr.__version__}
-         • 
-        <a style="text-decoration:none;color:inherit" href="https://github.com/GaiZhenbiao/ChuanhuChatGPT">ChuanhuChat</a>: {repo_version}
         """
 
 

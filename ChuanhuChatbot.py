@@ -123,7 +123,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                         show_label=False, container=False, elem_id="model-select-dropdown"
                     )
                     lora_select_dropdown = gr.Dropdown(
-                        label=i18n("选择LoRA模型"), choices=[], multiselect=False, interactive=True, visible=False,
+                        label=i18n("选择LoRA模型"), choices=["No LoRA"] + get_file_names_by_pinyin("lora", filetypes=[""]), multiselect=False, interactive=True, visible=True,
                         container=False,
                     )
                     gr.HTML(get_html("chatbot_header_btn.html").format(
@@ -214,8 +214,8 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                                 lines=8
                             )
                             retain_system_prompt_checkbox = gr.Checkbox(
-                                label=i18n("新建对话保留Prompt"), value=False, visible=True, elem_classes="switch-checkbox")
-                            with gr.Accordion(label=i18n("加载Prompt模板"), open=False):
+                                label=i18n("新建对话保留Prompt"), value=True, visible=True, elem_classes="switch-checkbox")
+                            with gr.Accordion(label=i18n("加载Prompt模板"), open=True):
                                 with gr.Column():
                                     with gr.Row():
                                         with gr.Column(scale=6):
@@ -238,6 +238,10 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                                                         0], mode=1
                                                 ),
                                                 multiselect=False,
+                                                value=load_template(
+                                                    get_template_names()[
+                                                        0], mode=1
+                                                )[0],
                                                 container=False,
                                             )
                         gr.Markdown("---", elem_classes="hr-line")
@@ -418,7 +422,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                     with gr.Tab(label=i18n("关于"), elem_id="about-tab"):
                         gr.Markdown(
                             '<img alt="Chuanhu Chat logo" src="file=web_assets/icon/any-icon-512.png" style="max-width: 144px;">')
-                        gr.Markdown("# "+i18n("川虎Chat"))
+                        gr.Markdown("# "+i18n("本草"))
                         gr.HTML(get_html("footer.html").format(
                             versions=versions_html()), elem_id="footer")
                         gr.Markdown(CHUANHU_DESCRIPTION, elem_id="description")
@@ -506,7 +510,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
             chatbot = gr.Chatbot.update(label=MODELS[DEFAULT_MODEL])
         return user_info, user_name, current_model, toggle_like_btn_visibility(DEFAULT_MODEL), filename, system_prompt, chatbot, init_history_list(user_name)
     demo.load(create_greeting, inputs=None, outputs=[
-              user_info, user_name, current_model, like_dislike_area, saveFileName, systemPromptTxt, chatbot, historySelectList], api_name="load")
+              user_info, user_name, current_model, like_dislike_area, saveFileName, chatbot, historySelectList], api_name="load")
     chatgpt_predict_args = dict(
         fn=predict,
         inputs=[
@@ -791,11 +795,11 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
 
 logging.info(
     colorama.Back.GREEN
-    + "\n川虎的温馨提示：访问 http://localhost:7860 查看界面"
+    + "\n温馨提示：访问 http://localhost:7860 查看界面"
     + colorama.Style.RESET_ALL
 )
 # 默认开启本地服务器，默认可以直接从IP访问，默认不创建公开分享链接
-demo.title = i18n("川虎Chat 🚀")
+demo.title = i18n("本草")
 
 if __name__ == "__main__":
     reload_javascript()
