@@ -54,8 +54,6 @@ class Huozi_Client(BaseLLMModel):
         assert (
             len(history) % 2 == 0
         ), f"History should be even length. current history is: {history}"
-        history = [[history[i], history[i + 1]]
-                   for i in range(0, len(history), 2)]
         return history, query
 
     def get_answer_at_once(self):
