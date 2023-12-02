@@ -69,7 +69,7 @@ class Huozi_Client(BaseLLMModel):
                 generation_config=self.model.generation_config,
                 return_dict_in_generate=True,
                 output_scores=True,
-                max_new_tokens=256,
+                max_new_tokens=self.max_generation_token,
             )
         response = self.tokenizer.decode(generation_output.sequences[0])
         if "### 回答：" in response:

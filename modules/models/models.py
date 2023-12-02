@@ -38,7 +38,6 @@ def get_model(
         if model_type == ModelType.Huozi:
             if lora_model_path == "":
                 msg = f"现在请为 {model_name} 选择LoRA模型"
-                logging.info(msg)
                 lora_selector_visibility = True
                 if os.path.isdir("lora"):
                     lora_choices = ["No LoRA"] + get_file_names_by_pinyin("lora", filetypes=[""])
@@ -52,6 +51,10 @@ def get_model(
                 else:
                     msg += f" + {lora_model_path}"
                 model = Huozi_Client(model_name, lora_model_path, user_name=user_name)
+        elif model_type == ModelType.Baichuan:
+            logging.info(f"正在加载Baichuan模型: {model_name}")
+            from .Baichuan import Baichuan_Client
+            model = Baichuan_Client(model_name, lora_model_path, user_name=user_name)
         elif model_type == ModelType.OpenAI:
             logging.info(f"正在加载OpenAI模型: {model_name}")
             from .OpenAI import OpenAIClient

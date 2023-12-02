@@ -154,7 +154,6 @@ class ModelType(Enum):
     OpenAIVision = 16
     ERNIE = 17
     Huozi = 18
-    Bentsao = 18
     Baichuan = 19
 
     @classmethod
@@ -886,7 +885,7 @@ class BaseLLMModel:
             if type(user_question) == list:
                 user_question = user_question[0]["text"]
             filename = replace_special_symbols(user_question)[:16] + ".json"
-            return self.rename_chat_history(filename, chatbot, self.user_name)
+            return self.rename_chat_history(filename, chatbot)
         else:
             return gr.update()
 

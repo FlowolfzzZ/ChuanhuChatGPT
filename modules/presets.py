@@ -12,7 +12,7 @@ LLAMA_MODEL = None
 LLAMA_INFERENCER = None
 
 # ChatGPT 设置
-INITIAL_SYSTEM_PROMPT = "下面是一个问题，运用医学知识来正确回答提问.\n### 问题:\n{instruction}\n\n\n### 回答：\n"
+INITIAL_SYSTEM_PROMPT = "You are a helpful assistant."
 API_HOST = "api.openai.com"
 OPENAI_API_BASE = "https://api.openai.com/v1"
 CHAT_COMPLETION_URL = "https://api.openai.com/v1/chat/completions"
@@ -96,13 +96,16 @@ LOCAL_MODELS = [
 # Additional metadata for online and local models
 MODEL_METADATA = {
     "Huozi":{
+        "model_name": "Huozi",
         "repo_id": "Huozi",
     },
     "Bentsao":{
-        "repo_id": "baichuan-inc/Baichuan2-13B-Chat",
+        "model_name": "Bentsao",
+        "repo_id": "Baichuan/Baichuan2-13B-Chat",
     },
     "Baichuan":{
-        "repo_id": "baichuan-inc/Baichuan2-13B-Chat",
+        "model_name": "Baichuan",
+        "repo_id": "Baichuan/Baichuan2-13B-Chat",
     },
     "Llama-2-7B":{
         "repo_id": "TheBloke/Llama-2-7B-GGUF",
@@ -170,10 +173,10 @@ DEFAULT_MODEL = 0
 os.makedirs("models", exist_ok=True)
 os.makedirs("lora", exist_ok=True)
 os.makedirs("history", exist_ok=True)
-for dir_name in os.listdir("models"):
-    if os.path.isdir(os.path.join("models", dir_name)):
-        if dir_name not in MODELS:
-            MODELS.append(dir_name)
+# for dir_name in os.listdir("models"):
+#     if os.path.isdir(os.path.join("models", dir_name)):
+#         if dir_name not in MODELS:
+#             MODELS.append(dir_name)
 
 TOKEN_OFFSET = 1000 # 模型的token上限减去这个值，得到软上限。到达软上限之后，自动尝试减少token占用。
 DEFAULT_TOKEN_LIMIT = 3000 # 默认的token上限

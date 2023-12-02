@@ -215,7 +215,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                             )
                             retain_system_prompt_checkbox = gr.Checkbox(
                                 label=i18n("新建对话保留Prompt"), value=True, visible=True, elem_classes="switch-checkbox")
-                            with gr.Accordion(label=i18n("加载Prompt模板"), open=True):
+                            with gr.Accordion(label=i18n("加载Prompt模板"), open=False):
                                 with gr.Column():
                                     with gr.Row():
                                         with gr.Column(scale=6):
