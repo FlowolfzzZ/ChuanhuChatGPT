@@ -154,6 +154,8 @@ class ModelType(Enum):
     OpenAIVision = 16
     ERNIE = 17
     Huozi = 18
+    Bentsao = 18
+    Baichuan = 19
 
     @classmethod
     def get_type(cls, model_name: str):
@@ -161,6 +163,11 @@ class ModelType(Enum):
         model_name_lower = model_name.lower()
         if "huozi" in model_name_lower:
             model_type = ModelType.Huozi
+        # 本草2.0使用百川基模型
+        elif "bentsao" in model_name_lower:
+            model_type = ModelType.Baichuan
+        elif "baichuan" in model_name_lower:
+            model_type = ModelType.Baichuan
         elif "gpt" in model_name_lower:
             if "instruct" in model_name_lower:
                 model_type = ModelType.OpenAIInstruct

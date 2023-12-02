@@ -89,12 +89,20 @@ LOCAL_MODELS = [
     # "Qwen 7B",
     # "Qwen 14B",
     "Huozi",
+    "Bentsao",
+    # "Baichuan",
 ]
 
 # Additional metadata for online and local models
 MODEL_METADATA = {
     "Huozi":{
         "repo_id": "Huozi",
+    },
+    "Bentsao":{
+        "repo_id": "baichuan-inc/Baichuan2-13B-Chat",
+    },
+    "Baichuan":{
+        "repo_id": "baichuan-inc/Baichuan2-13B-Chat",
     },
     "Llama-2-7B":{
         "repo_id": "TheBloke/Llama-2-7B-GGUF",
