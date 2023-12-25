@@ -16,7 +16,7 @@ from modules.config import *
 from modules import config
 import gradio as gr
 import colorama
-
+import debugpy
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -28,7 +28,7 @@ gr.Chatbot.postprocess = postprocess
 
 
 def create_new_model():
-    return get_model(model_name=MODELS[DEFAULT_MODEL], access_key=my_api_key)[0]
+    return get_model(model_name=MODELS[DEFAULT_MODEL],lora_model_path="huozi-checkpoint-2496", access_key=my_api_key)[0]
 
 
 with gr.Blocks(theme=small_and_beautiful_theme) as demo:
@@ -58,7 +58,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
         ), visible=check_update)
 
     with gr.Row(equal_height=True, elem_id="chuanhu-body"):
-
+        # 左侧历史栏
         with gr.Column(elem_id="menu-area"):
             with gr.Column(elem_id="chuanhu-history"):
                 with gr.Box():
@@ -115,6 +115,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                 # gr.HTML(get_html("footer.html").format(versions=versions_html()), elem_id="footer")
                 # gr.Markdown(CHUANHU_DESCRIPTION, elem_id="chuanhu-author")
 
+        # 中间聊天区域
         with gr.Column(elem_id="chuanhu-area", scale=5):
             with gr.Column(elem_id="chatbot-area"):
                 with gr.Row(elem_id="chatbot-header"):
@@ -122,10 +123,17 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                         label=i18n("选择模型"), choices=MODELS, multiselect=False, value=MODELS[DEFAULT_MODEL], interactive=True,
                         show_label=False, container=False, elem_id="model-select-dropdown"
                     )
+                    # lora_select_dropdown = gr.Dropdown(
+                    #     label=i18n("选择LoRA模型"), choices=["No LoRA"] + get_file_names_by_pinyin("lora", filetypes=[""]), multiselect=False, interactive=True, visible=True,
+                    #     container=False,
+                    # )
+                    file_names = get_file_names_by_pinyin("lora", filetypes=[""])
+                    default_option = file_names[0] if file_names else None
                     lora_select_dropdown = gr.Dropdown(
-                        label=i18n("选择LoRA模型"), choices=["No LoRA"] + get_file_names_by_pinyin("lora", filetypes=[""]), multiselect=False, interactive=True, visible=True,
-                        container=False,
+                        label=i18n("选择LoRA模型"), choices=get_file_names_by_pinyin("lora", filetypes=[""]), multiselect=False, interactive=True, visible=True,
+                        container=False,value=default_option
                     )
+                    print(f"lora = {lora_select_dropdown.value}")
                     gr.HTML(get_html("chatbot_header_btn.html").format(
                         json_label=i18n("历史记录（JSON）"),
                         md_label=i18n("导出为 Markdown")
@@ -188,6 +196,7 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
                                     dislikeBtn = gr.Button(
                                         "👎", elem_id="gr-dislike-btn")
 
+        # 右侧工具栏
         with gr.Column(elem_id="toolbox-area", scale=1):
             # For CSS setting, there is an extra box. Don't remove it.
             with gr.Box(elem_id="chuanhu-toolbox"):
@@ -499,8 +508,9 @@ with gr.Blocks(theme=small_and_beautiful_theme) as demo:
         else:
             user_info, user_name = gr.Markdown.update(
                 value=f"", visible=False), ""
+        # 初始化model
         current_model = get_model(
-            model_name=MODELS[DEFAULT_MODEL], access_key=my_api_key, user_name=user_name)[0]
+            model_name=MODELS[DEFAULT_MODEL],lora_model_path=lora_select_dropdown.value, access_key=my_api_key, user_name=user_name)[0]
         if not hide_history_when_not_logged_in or user_name:
             loaded_stuff = current_model.auto_load()
         else:
