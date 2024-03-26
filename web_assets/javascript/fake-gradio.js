@@ -29,6 +29,7 @@ function setUploader() {
             fileCountSpan.innerText = fileCount;
         } else {
             chatbotArea.classList.remove('with-file');
+            statusDisplayMessage("");
             fileCount = 0;
             transUpload();
         }
@@ -113,4 +114,8 @@ function bgSelectHistory(a,b){
     const historySelectorInput = gradioApp().querySelector('#history-select-dropdown input');
     let file = historySelectorInput.value;
     return [a,file]
+}
+
+function bgRebootChuanhu() {
+    rebootChuanhuBtn.click()
 }

@@ -70,7 +70,41 @@ function downloadFile(fileUrl, filename = "", format = "", retryTimeout = 200, m
     tryDownload();
 }
     
+function statusDisplayMessage(message) {
+    statusDisplayBlock = statusDisplay.querySelector("#status-display .md p");
+    statusDisplayBlock.innerText = message;
+}
 
+function bindFancyBox() {
+    Fancybox.bind('[data-fancybox]', {
+        Carousel: {
+            Panzoom: {
+                decelFriction: 0.5
+            }
+        }
+    });
+}
+
+function rebootingChuanhu() {
+    reloadSpinner = new Spin.Spinner({color:'#06AE56',lines:9}).spin();
+    pageInfo = document.createElement('div');
+    pageInfo.appendChild(reloadSpinner.el);
+    pageInfo.innerHTML += '<h1 style="position: absolute; left: 50%; top: 50%; transform: translateX(-50%); color: lightgray; text-align: center; font-family: sans-serif;">Rebooting...</h1>'
+    document.body.innerHTML = '';
+    document.body.appendChild(pageInfo);
+
+    var requestPing = function () {
+        requestGet("./file=web_assets/manifest.json", {}, function (data) {
+            location.reload();
+        }, function () {
+            setTimeout(requestPing, 500);
+        });
+    };
+
+    setTimeout(requestPing, 4000);
+
+    return [];
+}
 
 /* NOTE: These reload functions are not used in the current version of the code.
  *       From stable-diffusion-webui

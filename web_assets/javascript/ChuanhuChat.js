@@ -26,6 +26,7 @@ var sendBtn = null;
 var cancelBtn = null;
 var sliders = null;
 var updateChuanhuBtn = null;
+var rebootChuanhuBtn = null;
 var statusDisplay = null;
 
 var historySelector = null;
@@ -47,7 +48,7 @@ function addInit() {
     var needInit = {chatbotIndicator, uploaderIndicator};
 
     chatbotIndicator = gradioApp().querySelector('#chuanhu-chatbot > div.wrap');
-    uploaderIndicator = gradioApp().querySelector('#upload-index-file > div.wrap');
+    uploaderIndicator = gradioApp().querySelector('#upload-index-file > div[data-testid="block-label"]');
     chatListIndicator = gradioApp().querySelector('#history-select-dropdown > div.wrap');
 
     for (let elem in needInit) {
@@ -60,7 +61,8 @@ function addInit() {
     chatbotObserver.observe(chatbotIndicator, { attributes: true, childList: true, subtree: true });
     chatListObserver.observe(chatListIndicator, { attributes: true });
     setUploader();
-
+    setPasteUploader();
+    setDragUploader();
     return true;
 }
 
@@ -81,6 +83,7 @@ function initialize() {
     cancelBtn = gradioApp().getElementById("cancel-btn");
     sliders = gradioApp().querySelectorAll('input[type="range"]');
     updateChuanhuBtn = gradioApp().getElementById("update-chuanhu-btn");
+    rebootChuanhuBtn = gradioApp().getElementById("reboot-chuanhu-btn");
     statusDisplay = gradioApp().querySelector('#status-display');
 
     historySelector = gradioApp().querySelector('#history-select-dropdown');
@@ -108,6 +111,7 @@ function initialize() {
     setPopupBoxPosition();
     setSlider();
     setCheckboxes();
+    setAutocomplete();
     checkModel();
 
     settingBox.classList.add('hideBox');
@@ -335,6 +339,12 @@ function setChatbotScroll() {
     chatbotWrap.scrollTo(0,scrollHeight)
 }
 
+function setAutocomplete() {
+    // 避免API Key被当成密码导致的模型下拉框被当成用户名而引发的浏览器自动填充行为
+    const apiKeyInput = gradioApp().querySelector("#api-key input");
+    apiKeyInput.setAttribute("autocomplete", "new-password");
+}
+
 function clearChatbot(a, b) {
     clearHistoryHtml();
     // clearMessageRows();
@@ -349,6 +359,7 @@ function chatbotContentChanged(attempt = 1, force = false) {
             disableSendBtn();
             updateSlider();
             updateCheckboxes();
+            bindFancyBox();
 
             gradioApp().querySelectorAll('#chuanhu-chatbot .message-wrap .message.bot').forEach(addChuanhuButton);
 

@@ -4,6 +4,7 @@ import os
 import logging
 import sys
 import commentjson as json
+import colorama
 
 from . import shared
 from . import presets
@@ -23,6 +24,7 @@ __all__ = [
     "server_name",
     "server_port",
     "share",
+    "autobrowser",
     "check_update",
     "latex_delimiters_set",
     "hide_history_when_not_logged_in",
@@ -30,6 +32,7 @@ __all__ = [
     "show_api_billing",
     "chat_name_method_index",
     "HIDE_MY_KEY",
+    "hfspaceflag",
 ]
 
 # 添加一个统一的config文件，避免文件过多造成的疑惑（优先级最低）
@@ -83,6 +86,8 @@ dockerflag = config.get("dockerflag", False)
 if os.environ.get("dockerrun") == "yes":
     dockerflag = True
 
+hfspaceflag = os.environ.get("HF_SPACE", "false") == "true"
+
 # 处理 api-key 以及 允许的用户列表
 my_api_key = config.get("openai_api_key", "")
 my_api_key = os.environ.get("OPENAI_API_KEY", my_api_key)
@@ -106,10 +111,17 @@ if "extra_models" in  config:
 
 HIDE_MY_KEY = config.get("hide_my_key", False)
 
-google_palm_api_key = config.get("google_palm_api_key", "")
-google_palm_api_key = os.environ.get(
-    "GOOGLE_PALM_API_KEY", google_palm_api_key)
-os.environ["GOOGLE_PALM_API_KEY"] = google_palm_api_key
+google_genai_api_key = os.environ.get(
+    "GOOGLE_PALM_API_KEY", "")
+google_genai_api_key = os.environ.get(
+    "GOOGLE_GENAI_API_KEY", "")
+google_genai_api_key = config.get("google_palm_api_key", google_genai_api_key)
+google_genai_api_key = config.get("google_genai_api_key", google_genai_api_key)
+os.environ["GOOGLE_GENAI_API_KEY"] = google_genai_api_key
+
+huggingface_auth_token = os.environ.get("HF_AUTH_TOKEN", "")
+huggingface_auth_token = config.get("hf_auth_token", huggingface_auth_token)
+os.environ["HF_AUTH_TOKEN"] = huggingface_auth_token
 
 xmchat_api_key = config.get("xmchat_api_key", "")
 os.environ["XMCHAT_API_KEY"] = xmchat_api_key
@@ -143,6 +155,9 @@ os.environ["ERNIE_APIKEY"] = ernie_api_key
 ernie_secret_key = config.get("ernie_secret_key", "")
 os.environ["ERNIE_SECRETKEY"] = ernie_secret_key
 
+ollama_host = config.get("ollama_host", "")
+os.environ["OLLAMA_HOST"] = ollama_host
+
 load_config_to_environ(["openai_api_type", "azure_openai_api_key", "azure_openai_api_base_url",
                        "azure_openai_api_version", "azure_deployment_name", "azure_embedding_deployment_name", "azure_embedding_model_name"])
 
@@ -166,11 +181,11 @@ api_host = os.environ.get(
     "OPENAI_API_BASE", config.get("openai_api_base", None))
 if api_host is not None:
     shared.state.set_api_host(api_host)
-    os.environ["OPENAI_API_BASE"] = f"{api_host}/v1"
+    # os.environ["OPENAI_API_BASE"] = f"{api_host}/v1"
     logging.info(f"OpenAI API Base set to: {os.environ['OPENAI_API_BASE']}")
 
 default_chuanhu_assistant_model = config.get(
-    "default_chuanhu_assistant_model", "gpt-3.5-turbo")
+    "default_chuanhu_assistant_model", "gpt-4-turbo-preview")
 for x in ["GOOGLE_CSE_ID", "GOOGLE_API_KEY", "WOLFRAM_ALPHA_APPID", "SERPAPI_API_KEY"]:
     if config.get(x, None) is not None:
         os.environ[x] = config[x]
@@ -287,13 +302,18 @@ if server_port is None:
 assert server_port is None or type(server_port) == int, "要求port设置为int类型"
 
 # 设置默认model
-default_model = config.get("default_model", "")
+default_model = config.get("default_model", "GPT3.5 Turbo")
 try:
-    presets.DEFAULT_MODEL = presets.MODELS.index(default_model)
+    if default_model in presets.MODELS:
+        presets.DEFAULT_MODEL = presets.MODELS.index(default_model)
+    else:
+        presets.DEFAULT_MODEL = presets.MODELS.index(next((k for k, v in presets.MODEL_METADATA.items() if v.get("model_name") == default_model), None))
+    logging.info("默认模型设置为了：" + str(presets.MODELS[presets.DEFAULT_MODEL]))
 except ValueError:
-    pass
+    logging.error("你填写的默认模型" + default_model + "不存在！请从下面的列表中挑一个填写：" + str(presets.MODELS))
 
 share = config.get("share", False)
+autobrowser = config.get("autobrowser", True)
 
 # avatar
 bot_avatar = config.get("bot_avatar", "default")

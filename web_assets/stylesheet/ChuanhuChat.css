@@ -27,6 +27,8 @@
 
     --toolbox-width: 280px;
     --toolbox-background-fill: var(--background-fill-secondary);
+
+    --dragging-hint-background-color: #F9F9F9BB;
     
     .dark {
         --chatbot-blur-background-color: #12111166;
@@ -38,6 +40,8 @@
 
         --message-list-background-hover: #202020;
         --message-list-background-selected: #2F3030;
+
+        --dragging-hint-background-color: #515151BB;
     }
 }
 
@@ -112,7 +116,7 @@ body.popup-open {
 .insert-block {
     position: relative;
     margin: 0;
-    padding: 8px 12px;
+    padding: 8px 0;
     box-shadow: var(--block-shadow);
     border-width: var(--block-border-width);
     border-color: var(--block-border-color);
@@ -570,18 +574,18 @@ input:checked + .chatbot-input-more-span {
     opacity: 1;
 }
 
-#uploaded-files-div {
+#uploaded-files-btn {
     display: none;
 }
-.with-file #uploaded-files-div {
+.with-file #uploaded-files-btn {
     display: flex;
     justify-content: space-between;
     width: 100%;
 }
-.with-file label.may-disable-label {
+/* .with-file label.may-disable-label {
     cursor: not-allowed !important;
-}
-.with-file #uploaded-files-div > .chatbot-input-more-span {
+} */
+.with-file #uploaded-files-btn > .chatbot-input-more-span {
     opacity: 1;
 }
 #uploaded-files-count {
@@ -892,9 +896,10 @@ input:checked + .chatbot-input-more-span {
         height: calc(100% - 35px);
         overflow-y: auto;
         border-style: none;
-        padding: 0;
+        padding-block: 0;
+        padding-left: 4px;
         /* 理论上不该是0，但这里考虑内部gradio有好多container有padding了 */
-        padding-right: env(safe-area-inset-right);
+        padding-right: max(4px, env(safe-area-inset-right));
     }
     #toolbox-area > .gradio-box > .gradio-tabs > div.tab-nav {
         display: flex;
@@ -946,10 +951,13 @@ input:checked + .chatbot-input-more-span {
     理论上不该是0，但这里考虑内部gradio有好多container有padding了 
 } 
 */
-#toolbox-area .tabitem > div > .gradio-markdown {
+#toolbox-area .tabitem > div > .gradio-markdown:not(.hr-line) {
     padding: 12px;
 }
 
+/* #toolbox-area .tabitem > div > .gradio-accordion > .label-wrap {
+    padding-inline: 12px;
+} */
 #toolbox-area .tabitem > div > .gradio-accordion > .label-wrap > span {
     font-weight: bold;
 }
@@ -957,6 +965,12 @@ input:checked + .chatbot-input-more-span {
     gap: 0 !important;
 }
 
+#toolbox-area .tabitem > div > .gradio-accordion > div div.block.padded {
+    padding-inline: 0 !important;
+}
+#toolbox-area .tabitem > div > .gradio-accordion > div > div.gap{
+    gap: 0 !important;
+}
 /* #chuanhu-popup ul.options {
     transform: translate(-50%, -50%);
 } */
@@ -1162,6 +1176,34 @@ button:hover .icon-need-hover, button:hover.icon-need-hover {
 button:active .icon-need-hover, button:active.icon-need-hover {
     opacity: 1;
 }
+
+.chuanhu-sparkle >::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    height: calc(100% - 4px);
+    width: calc(100% - 4px);
+    animation: border-pulse 2s cubic-bezier(.5,0,.5,1) infinite;
+    border: 2px solid var(--color-accent) !important;
+    border-radius: 4px;
+    pointer-events: none;
+}
+/* .chuanhu-sparkle {
+    animation: content-pulse 1s cubic-bezier(.5,0,.5,1) infinite;
+} */
+@keyframes border-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.1;
+    }
+}
+
 /* .main-body {
     flex-wrap: nowrap;
     gap: 0;

@@ -4,6 +4,7 @@ import json
 import logging
 import traceback
 import base64
+from math import ceil
 
 import colorama
 import requests
@@ -38,10 +39,10 @@ class OpenAIVisionClient(BaseLLMModel):
             system_prompt=system_prompt,
             user=user_name
         )
+        self.image_token = 0
         self.api_key = api_key
         self.need_api_key = True
         self.max_generation_token = 4096
-        self.images = []
         self._refresh_header()
 
     def get_answer_stream_iter(self):
@@ -62,66 +63,6 @@ class OpenAIVisionClient(BaseLLMModel):
         total_token_count = response["usage"]["total_tokens"]
         return content, total_token_count
 
-    def try_read_image(self, filepath):
-        def is_image_file(filepath):
-            # 判断文件是否为图片
-            valid_image_extensions = [
-                ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff"]
-            file_extension = os.path.splitext(filepath)[1].lower()
-            return file_extension in valid_image_extensions
-        def image_to_base64(image_path):
-            # 打开并加载图片
-            img = Image.open(image_path)
-
-            # 获取图片的宽度和高度
-            width, height = img.size
-
-            # 计算压缩比例，以确保最长边小于4096像素
-            max_dimension = 2048
-            scale_ratio = min(max_dimension / width, max_dimension / height)
-
-            if scale_ratio < 1:
-                # 按压缩比例调整图片大小
-                new_width = int(width * scale_ratio)
-                new_height = int(height * scale_ratio)
-                img = img.resize((new_width, new_height), Image.LANCZOS)
-
-            # 将图片转换为jpg格式的二进制数据
-            buffer = BytesIO()
-            if img.mode == "RGBA":
-                img = img.convert("RGB")
-            img.save(buffer, format='JPEG')
-            binary_image = buffer.getvalue()
-
-            # 对二进制数据进行Base64编码
-            base64_image = base64.b64encode(binary_image).decode('utf-8')
-
-            return base64_image
-
-        if is_image_file(filepath):
-            logging.info(f"读取图片文件: {filepath}")
-            base64_image = image_to_base64(filepath)
-            self.images.append({
-                "path": filepath,
-                "base64": base64_image,
-            })
-
-    def handle_file_upload(self, files, chatbot, language):
-        """if the model accepts multi modal input, implement this function"""
-        if files:
-            for file in files:
-                if file.name:
-                    self.try_read_image(file.name)
-        if self.images is not None:
-                chatbot = chatbot + [([image["path"] for image in self.images], None)]
-        return None, chatbot, None
-
-    def prepare_inputs(self, real_inputs, use_websearch, files, reply_language, chatbot):
-        fake_inputs = real_inputs
-        display_append = ""
-        limited_context = False
-        return limited_context, fake_inputs, display_append, real_inputs, chatbot
-
 
     def count_token(self, user_input):
         input_token_count = count_token(construct_user(user_input))
@@ -131,6 +72,13 @@ class OpenAIVisionClient(BaseLLMModel):
             )
             return input_token_count + system_prompt_token_count
         return input_token_count
+
+    def count_image_tokens(self, width: int, height: int):
+        h = ceil(height / 512)
+        w = ceil(width / 512)
+        n = w * h
+        total = 85 + 170 * n
+        return total
 
     def billing_info(self):
         try:
@@ -174,17 +122,39 @@ class OpenAIVisionClient(BaseLLMModel):
             logging.error(i18n("获取API使用情况失败:") + str(e))
             return STANDARD_ERROR_MSG + ERROR_RETRIEVE_MSG
 
+    def _get_gpt4v_style_history(self):
+        history = []
+        image_buffer = []
+        for message in self.history:
+            if message["role"] == "user":
+                content = []
+                if image_buffer:
+                    for image in image_buffer:
+                        content.append(
+                            {
+                                "type": "image_url",
+                                "image_url": f"data:image/{self.get_image_type(image)};base64,{self.get_base64_image(image)}"
+                            },
+                        )
+                if content:
+                    content.insert(0, {"type": "text", "text": message["content"]})
+                    history.append(construct_user(content))
+                    image_buffer = []
+                else:
+                    history.append(message)
+            elif message["role"] == "assistant":
+                history.append(message)
+            elif message["role"] == "image":
+                image_buffer.append(message["content"])
+        return history
+
+
     @shared.state.switching_api_key  # 在不开启多账号模式的时候，这个装饰器不会起作用
     def _get_response(self, stream=False):
         openai_api_key = self.api_key
         system_prompt = self.system_prompt
-        history = self.history
-        if self.images:
-            self.history[-1]["content"] = [
-                {"type": "text", "text": self.history[-1]["content"]},
-                *[{"type": "image_url", "image_url": "data:image/jpeg;base64,"+image["base64"]} for image in self.images]
-            ]
-            self.images = []
+        history = self._get_gpt4v_style_history()
+
         logging.debug(colorama.Fore.YELLOW +
                       f"{history}" + colorama.Fore.RESET)
         headers = {
@@ -204,11 +174,10 @@ class OpenAIVisionClient(BaseLLMModel):
             "stream": stream,
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
+            "max_tokens": 4096
         }
 
-        if self.max_generation_token is not None:
-            payload["max_tokens"] = self.max_generation_token
-        if self.stop_sequence is not None:
+        if self.stop_sequence:
             payload["stop"] = self.stop_sequence
         if self.logit_bias is not None:
             payload["logit_bias"] = self.encoded_logit_bias()
@@ -277,6 +246,8 @@ class OpenAIVisionClient(BaseLLMModel):
                     if chunk_length > 6 and "delta" in chunk["choices"][0]:
                         if "finish_details" in chunk["choices"][0]:
                             finish_reason = chunk["choices"][0]["finish_details"]
+                        elif "finish_reason" in chunk["choices"][0]:
+                            finish_reason = chunk["choices"][0]["finish_reason"]
                         else:
                             finish_reason = chunk["finish_details"]
                         if finish_reason == "stop":

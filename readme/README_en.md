@@ -1,6 +1,6 @@
 <div align="right">
   <!-- Language: -->
-  <a title="Chinese" href="../README.md">简体中文</a> | English | <a title="Japanese" href="README_ja.md">日本語</a> | <a title="Russian" href="README_ru.md">Russian</a>
+  <a title="Chinese" href="../README.md">简体中文</a> | English | <a title="Japanese" href="README_ja.md">日本語</a> | <a title="Russian" href="README_ru.md">Russian</a> | <a title="Korean" href="README_ko.md">한국어</a>
 </div>
 
 <h1 align="center">川虎 Chat 🐯 Chuanhu Chat</h1>
@@ -70,7 +70,8 @@
 | [MiniMax](https://api.minimax.chat/) |
 | [XMChat](https://github.com/MILVLG/xmchat) | Not support streaming
 | [Midjourney](https://www.midjourney.com/) | Not support streaming
-| [Claude](https://www.anthropic.com/) |
+| [Claude](https://www.anthropic.com/) | ✨ Now supports Claude 3 Opus and Sonnet, Haiku will be supported as soon as it is released
+| DALL·E 3 |
 
 ## Usage Tips
 

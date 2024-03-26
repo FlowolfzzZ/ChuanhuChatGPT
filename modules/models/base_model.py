@@ -1,43 +1,34 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
 
-import logging
+import base64
 import json
-import commentjson as cjson
+import logging
 import os
-import sys
-import requests
-import urllib3
-import traceback
-import pathlib
 import shutil
-
-from tqdm import tqdm
-import colorama
-from duckduckgo_search import DDGS
-from itertools import islice
-import asyncio
-import aiohttp
-from enum import Enum
-
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.callbacks.manager import BaseCallbackManager
-
-from typing import Any, Dict, List, Optional, Union
-
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.input import print_text
-from langchain.schema import AgentAction, AgentFinish, LLMResult
-from threading import Thread, Condition
+import time
+import traceback
 from collections import deque
-from langchain.chat_models.base import BaseChatModel
-from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
+from enum import Enum
+from io import BytesIO
+from itertools import islice
+from threading import Condition, Thread
+from typing import Any, Dict, List, Optional
 
-from ..presets import *
-from ..index_func import *
-from ..utils import *
+import colorama
+import PIL
+import urllib3
+from duckduckgo_search import DDGS
+from huggingface_hub import hf_hub_download
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.chat_models.base import BaseChatModel
+from langchain.schema import (AgentAction, AgentFinish, AIMessage, BaseMessage,
+                              HumanMessage, SystemMessage)
+
 from .. import shared
 from ..config import retrieve_proxy
+from ..index_func import *
+from ..presets import *
+from ..utils import *
 
 
 class CallbackToIterator:
@@ -153,8 +144,12 @@ class ModelType(Enum):
     Qwen = 15
     OpenAIVision = 16
     ERNIE = 17
-    Huozi = 18
-    Baichuan = 19
+    DALLE3 = 18
+    GoogleGemini = 19
+    GoogleGemma = 20
+    Ollama = 21
+    Huozi = 22
+    Baichuan = 23
 
     @classmethod
     def get_type(cls, model_name: str):
@@ -176,6 +171,8 @@ class ModelType(Enum):
                 model_type = ModelType.OpenAI
         elif "chatglm" in model_name_lower:
             model_type = ModelType.ChatGLM
+        elif "ollama" in model_name_lower:
+            model_type = ModelType.Ollama
         elif "llama" in model_name_lower or "alpaca" in model_name_lower:
             model_type = ModelType.LLaMA
         elif "xmchat" in model_name_lower:
@@ -192,6 +189,8 @@ class ModelType(Enum):
             model_type = ModelType.ChuanhuAgent
         elif "palm" in model_name_lower:
             model_type = ModelType.GooglePaLM
+        elif "gemini" in model_name_lower:
+            model_type = ModelType.GoogleGemini
         elif "midjourney" in model_name_lower:
             model_type = ModelType.Midjourney
         elif "azure" in model_name_lower or "api" in model_name_lower:
@@ -204,9 +203,41 @@ class ModelType(Enum):
             model_type = ModelType.Qwen
         elif "ernie" in model_name_lower:
             model_type = ModelType.ERNIE
+        elif "dall" in model_name_lower:
+            model_type = ModelType.DALLE3
+        elif "gemma" in model_name_lower:
+            model_type = ModelType.GoogleGemma
         else:
             model_type = ModelType.LLaMA
         return model_type
+
+
+def download(repo_id, filename, retry=10):
+    if os.path.exists("./models/downloaded_models.json"):
+        with open("./models/downloaded_models.json", "r") as f:
+            downloaded_models = json.load(f)
+        if repo_id in downloaded_models:
+            return downloaded_models[repo_id]["path"]
+    else:
+        downloaded_models = {}
+    while retry > 0:
+        try:
+            model_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                cache_dir="models",
+                resume_download=True,
+            )
+            downloaded_models[repo_id] = {"path": model_path}
+            with open("./models/downloaded_models.json", "w") as f:
+                json.dump(downloaded_models, f)
+            break
+        except:
+            print("Error downloading model, retrying...")
+            retry -= 1
+    if retry == 0:
+        raise Exception("Error downloading model, please try again later.")
+    return model_path
 
 
 class BaseLLMModel:
@@ -217,7 +248,7 @@ class BaseLLMModel:
         temperature=1.0,
         top_p=1.0,
         n_choices=1,
-        stop="",
+        stop=[],
         max_generation_token=None,
         presence_penalty=0,
         frequency_penalty=0,
@@ -227,11 +258,20 @@ class BaseLLMModel:
     ) -> None:
         self.history = []
         self.all_token_counts = []
-        if model_name in MODEL_METADATA:
-            self.model_name = MODEL_METADATA[model_name]["model_name"]
-        else:
-            self.model_name = model_name
         self.model_type = ModelType.get_type(model_name)
+        try:
+            self.model_name = MODEL_METADATA[model_name]["model_name"]
+        except:
+            self.model_name = model_name
+        try:
+            self.multimodal = MODEL_METADATA[model_name]["multimodal"]
+        except:
+            self.multimodal = False
+        if max_generation_token is None:
+            try:
+                max_generation_token = MODEL_METADATA[model_name]["max_generation"]
+            except:
+                pass
         try:
             self.token_upper_limit = MODEL_METADATA[model_name]["token_limit"]
         except KeyError:
@@ -362,10 +402,33 @@ class BaseLLMModel:
     def handle_file_upload(self, files, chatbot, language):
         """if the model accepts multi modal input, implement this function"""
         status = gr.Markdown.update()
+        image_files = []
+        other_files = []
         if files:
-            index = construct_index(self.api_key, file_src=files)
-            status = i18n("索引构建完成")
-        return gr.Files.update(), chatbot, status
+            for f in files:
+                if f.name.endswith(IMAGE_FORMATS):
+                    image_files.append(f)
+                else:
+                    other_files.append(f)
+            if image_files:
+                if self.multimodal:
+                    chatbot.extend([(((image.name, None)), None) for image in image_files])
+                    self.history.extend([construct_image(image.name) for image in image_files])
+                else:
+                    gr.Warning(i18n("该模型不支持多模态输入"))
+            if other_files:
+                try:
+                    construct_index(self.api_key, file_src=files)
+                    status = i18n("索引构建完成")
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    status = i18n("索引构建失败！") + str(e)
+        if other_files:
+            other_files = [f.name for f in other_files]
+        else:
+            other_files = None
+        return gr.File.update(value=other_files), chatbot, status
 
     def summarize_index(self, files, chatbot, language):
         status = gr.Markdown.update()
@@ -374,10 +437,10 @@ class BaseLLMModel:
             status = i18n("总结完成")
             logging.info(i18n("生成内容总结中……"))
             os.environ["OPENAI_API_KEY"] = self.api_key
-            from langchain.chains.summarize import load_summarize_chain
-            from langchain.prompts import PromptTemplate
-            from langchain.chat_models import ChatOpenAI
             from langchain.callbacks import StdOutCallbackHandler
+            from langchain.chains.summarize import load_summarize_chain
+            from langchain.chat_models import ChatOpenAI
+            from langchain.prompts import PromptTemplate
 
             prompt_template = (
                 "Write a concise summary of the following:\n\n{text}\n\nCONCISE SUMMARY IN "
@@ -471,10 +534,19 @@ class BaseLLMModel:
                 )
         elif use_websearch:
             search_results = []
-            with DDGS() as ddgs:
-                ddgs_gen = ddgs.text(fake_inputs, backend="lite")
-                for r in islice(ddgs_gen, 10):
-                    search_results.append(r)
+            with retrieve_proxy() as proxy:
+                if proxy[0] or proxy[1]:
+                    proxies = {}
+                    if proxy[0]:
+                        proxies["http"] = proxy[0]
+                    if proxy[1]:
+                        proxies["https"] = proxy[1]
+                else:
+                    proxies = None
+                with DDGS(proxies=proxies) as ddgs:
+                    ddgs_gen = ddgs.text(fake_inputs, backend="lite")
+                    for r in islice(ddgs_gen, 10):
+                        search_results.append(r)
             reference_results = []
             for idx, result in enumerate(search_results):
                 logging.debug(f"搜索结果{idx + 1}：{result}")
@@ -592,6 +664,7 @@ class BaseLLMModel:
         else:
             self.history.append(construct_user(inputs))
 
+        start_time = time.time()
         try:
             if stream:
                 logging.debug("使用流式传输")
@@ -616,7 +689,7 @@ class BaseLLMModel:
             traceback.print_exc()
             status_text = STANDARD_ERROR_MSG + beautify_err_msg(str(e))
             yield chatbot, status_text
-
+        end_time = time.time()
         if len(self.history) > 1 and self.history[-1]["content"] != fake_inputs:
             logging.info(
                 "回答为："
@@ -624,6 +697,7 @@ class BaseLLMModel:
                 + f"{self.history[-1]['content']}"
                 + colorama.Style.RESET_ALL
             )
+            logging.info(i18n("Tokens per second：{token_generation_speed}").format(token_generation_speed=str(self.all_token_counts[-1] / (end_time - start_time))))
 
         if limited_context:
             # self.history = self.history[-4:]
@@ -788,7 +862,9 @@ class BaseLLMModel:
         self.interrupted = False
         self.history_file_path = new_auto_history_filename(self.user_name)
         history_name = self.history_file_path[:-5]
-        choices = [history_name] + get_history_names(self.user_name)
+        choices = get_history_names(self.user_name)
+        if history_name not in choices:
+            choices.insert(0, history_name)
         system_prompt = self.system_prompt if remain_system_prompt else ""
 
         self.single_turn = self.default_single_turn
@@ -890,9 +966,8 @@ class BaseLLMModel:
             return gr.update()
 
     def auto_save(self, chatbot=None):
-        if chatbot is None:
-            chatbot = self.chatbot
-        save_file(self.history_file_path, self, chatbot)
+        if chatbot is not None:
+            save_file(self.history_file_path, self, chatbot)
 
     def export_markdown(self, filename, chatbot):
         if filename == "":
@@ -1033,11 +1108,7 @@ class BaseLLMModel:
             )
 
     def auto_load(self):
-        filepath = get_history_filepath(self.user_name)
-        if not filepath:
-            self.history_file_path = new_auto_history_filename(self.user_name)
-        else:
-            self.history_file_path = filepath
+        self.history_file_path = new_auto_history_filename(self.user_name)
         return self.load_chat_history()
 
     def like(self):
@@ -1051,6 +1122,31 @@ class BaseLLMModel:
     def deinitialize(self):
         """deinitialize the model, implement if needed"""
         pass
+
+    def clear_cuda_cache(self):
+        import gc
+
+        import torch
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    def get_base64_image(self, image_path):
+        if image_path.endswith(DIRECTLY_SUPPORTED_IMAGE_FORMATS):
+            with open(image_path, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+        else:
+            # convert to jpeg
+            image = PIL.Image.open(image_path)
+            image = image.convert("RGB")
+            buffer = BytesIO()
+            image.save(buffer, format="JPEG")
+            return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    def get_image_type(self, image_path):
+        if image_path.lower().endswith(DIRECTLY_SUPPORTED_IMAGE_FORMATS):
+            return os.path.splitext(image_path)[1][1:].lower()
+        else:
+            return "jpeg"
 
 
 class Base_Chat_Langchain_Client(BaseLLMModel):
